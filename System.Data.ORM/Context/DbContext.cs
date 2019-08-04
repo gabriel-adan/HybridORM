@@ -46,6 +46,12 @@ namespace System.Data.ORM.Context
                     var set = Activator.CreateInstance(typeof(Set<>).MakeGenericType(mapping.Value.Type), connection, configuration, assembly, query, persist, modify, delete);
                     Cfg.Configuration.Sets.Add(set);
                 }
+                foreach (var mapping in Cfg.Configuration.ViewMappings)
+                {
+                    var viewQuery = Activator.CreateInstance(typeof(ViewQuery<>).MakeGenericType(mapping.Value.Type), mapping.Value);
+                    var view = Activator.CreateInstance(typeof(View<>).MakeGenericType(mapping.Value.Type), connection, configuration, assembly, viewQuery);
+                    Cfg.Configuration.Views.Add(view);
+                }
             }
             catch
             {
@@ -58,8 +64,18 @@ namespace System.Data.ORM.Context
             Type type = typeof(T);
             IDbSet<T> DbSet = Cfg.Configuration.Sets.Where(set => set.GetType().GetGenericArguments()[0] == type).FirstOrDefault() as IDbSet<T>;
             if (DbSet == null)
-                throw new Exception("Entity of type: [" + type + "] not mapping.");
+                throw new Exception("Entity of type: [" + type + "] not mapped.");
             return DbSet;
+        }
+
+        public IView<V> View<V>() where V : class
+        {
+            Type type = typeof(V);
+            IView<V> view = Cfg.Configuration.Views.Where(v => v.GetType().GetGenericArguments()[0] == type).FirstOrDefault() as IView<V>;
+            if (view == null)
+                throw new Exception("Entity of type: [" + type + "] not mapped.");
+
+            return view;
         }
 
         IList<PropertyInfo> GetEntities(Type type)

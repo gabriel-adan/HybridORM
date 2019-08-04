@@ -140,8 +140,7 @@ namespace System.Data.ORM.Context
         {
             try
             {
-                string sql = Query.Where(expression);
-                currentQuery = sql;
+                currentQuery = Query.EntityMap.Select + Query.Where(expression);
                 return this;
             }
             catch
@@ -156,13 +155,9 @@ namespace System.Data.ORM.Context
             {
                 string groupBy = Query.GroupBy(expression);
                 if (string.IsNullOrEmpty(currentQuery))
-                {
                     currentQuery = Query.EntityMap.Select + groupBy;
-                }
                 else
-                {
-                    currentQuery = currentQuery + groupBy;
-                }
+                    currentQuery += groupBy;
                 return this;
             }
             catch
@@ -182,37 +177,31 @@ namespace System.Data.ORM.Context
                 if (string.IsNullOrEmpty(currentQuery))
                     currentQuery = Query.EntityMap.Select;
                 string sql = currentQuery + " " + orderBy;
-                using (IDbCommand command = CreateCommand(sql))
-                {
-                    using (IDataReader reader = command.ExecuteReader())
-                    {
-                        while (reader.Read())
-                        {
-                            T entity = Activator.CreateInstance(type) as T;
-                            foreach (var keyValueColumn in Query.EntityMap.ColumnNames)
-                            {
-                                var value = reader["_this." + keyValueColumn.Key];
-                                PropertyInfo property = type.GetProperty(keyValueColumn.Key);
-                                property.SetValue(entity, DataFormater.ParseToData(property, value));
-                            }
-                            foreach (var keyValuePair in Query.EntityMap.Entities)
-                            {
-                                object obj = Activator.CreateInstance(keyValuePair.Value.Type);
-                                foreach (var keyValueColumn in keyValuePair.Value.ColumnNames)
-                                {
-                                    var value = reader[keyValuePair.Key + "." + keyValueColumn.Key];
-                                    PropertyInfo property = keyValuePair.Value.Type.GetProperty(keyValueColumn.Key);
-                                    property.SetValue(obj, DataFormater.ParseToData(property, value));
-                                }
-                                Query.EntityMap.Type.GetProperty(keyValuePair.Key).SetValue(entity, obj);
-                            }
-                            list.Add(entity);
-                        }
-                        reader.Close();
-                        reader.Dispose();
-                        command.Dispose();
-                    }
-                }
+                currentQuery = null;
+                list = Execute(sql);
+                foreach (var obj in list)
+                    FillEntities(obj);
+                return list;
+            }
+            catch
+            {
+                throw;
+            }
+        }
+
+        public IList<T> OrderBy<E>(Expression<Func<T, E>> expression, Order orderType)
+        {
+            try
+            {
+                Type type = Query.EntityMap.Type;
+                CurrentType = type;
+                IList<T> list = Activator.CreateInstance(typeof(List<>).MakeGenericType(type)) as IList<T>;
+                string orderBy = Query.OrderBy(expression);
+                if (string.IsNullOrEmpty(currentQuery))
+                    currentQuery = Query.EntityMap.Select;
+                string sql = currentQuery + " " + orderBy + " " + orderType + ";";
+                currentQuery = null;
+                list = Execute(sql);
                 foreach (var obj in list)
                     FillEntities(obj);
                 return list;
@@ -233,37 +222,8 @@ namespace System.Data.ORM.Context
                 if (string.IsNullOrEmpty(currentQuery))
                     currentQuery = Query.ToList();
                 string sql = currentQuery;
-                using (IDbCommand command = CreateCommand(sql))
-                {
-                    using (IDataReader reader = command.ExecuteReader())
-                    {
-                        while (reader.Read())
-                        {
-                            T entity = Activator.CreateInstance(type) as T;
-                            foreach (var keyValueColumn in Query.EntityMap.ColumnNames)
-                            {
-                                var value = reader["_this." + keyValueColumn.Key];
-                                PropertyInfo property = type.GetProperty(keyValueColumn.Key);
-                                property.SetValue(entity, DataFormater.ParseToData(property, value));
-                            }
-                            foreach (var keyValuePair in Query.EntityMap.Entities)
-                            {
-                                object obj = Activator.CreateInstance(keyValuePair.Value.Type);
-                                foreach (var keyValueColumn in keyValuePair.Value.ColumnNames)
-                                {
-                                    var value = reader[keyValuePair.Key + "." + keyValueColumn.Key];
-                                    PropertyInfo property = keyValuePair.Value.Type.GetProperty(keyValueColumn.Key);
-                                    property.SetValue(obj, DataFormater.ParseToData(property, value));
-                                }
-                                Query.EntityMap.Type.GetProperty(keyValuePair.Key).SetValue(entity, obj);
-                            }
-                            list.Add(entity);
-                        }
-                        reader.Close();
-                        reader.Dispose();
-                        command.Dispose();
-                    }
-                }
+                currentQuery = null;
+                list = Execute(sql);
                 foreach (var obj in list)
                     FillEntities(obj);
                 return list;
@@ -279,7 +239,6 @@ namespace System.Data.ORM.Context
             try
             {
                 string sql = Persist.Insert(entity);
-                System.Diagnostics.Debug.WriteLine("Current Query: " + sql);
                 using (IDbCommand command = CreateCommand(sql))
                 {
                     if (command.ExecuteNonQuery() > 0)
@@ -475,6 +434,54 @@ namespace System.Data.ORM.Context
                         }
                     }
                 }
+            }
+            catch
+            {
+                throw;
+            }
+        }
+
+        IList<T> Execute(string sql)
+        {
+            try
+            {
+                Type type = Query.EntityMap.Type;
+                CurrentType = type;
+                IList<T> list = Activator.CreateInstance(typeof(List<>).MakeGenericType(type)) as IList<T>;
+                using (IDbCommand command = CreateCommand(sql))
+                {
+                    using (IDataReader reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            T entity = Activator.CreateInstance(type) as T;
+                            foreach (var keyValueColumn in Query.EntityMap.ColumnNames)
+                            {
+                                var value = reader["_this." + keyValueColumn.Key];
+                                PropertyInfo property = type.GetProperty(keyValueColumn.Key);
+                                property.SetValue(entity, DataFormater.ParseToData(property, value));
+                            }
+                            foreach (var keyValuePair in Query.EntityMap.Entities)
+                            {
+                                object obj = Activator.CreateInstance(keyValuePair.Value.Type);
+                                foreach (var keyValueColumn in keyValuePair.Value.ColumnNames)
+                                {
+                                    var value = reader[keyValuePair.Key + "." + keyValueColumn.Key];
+                                    PropertyInfo property = keyValuePair.Value.Type.GetProperty(keyValueColumn.Key);
+                                    property.SetValue(obj, DataFormater.ParseToData(property, value));
+                                }
+                                Query.EntityMap.Type.GetProperty(keyValuePair.Key).SetValue(entity, obj);
+                            }
+                            list.Add(entity);
+                        }
+                        reader.Close();
+                        reader.Dispose();
+                        command.Dispose();
+                    }
+                }
+                foreach (var obj in list)
+                    FillEntities(obj);
+                return list;
             }
             catch
             {

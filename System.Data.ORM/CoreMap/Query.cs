@@ -160,7 +160,7 @@ namespace System.Data.ORM.CoreMap
 
         public string Where(Expression<Func<T, bool>> expression)
         {
-            return EntityMap.Select + "WHERE " + QueryTranslator.Where(expression);
+            return "WHERE " + QueryTranslator.Where(expression);
         }
 
         public string GroupBy<E>(Expression<Func<T, E>> expression)

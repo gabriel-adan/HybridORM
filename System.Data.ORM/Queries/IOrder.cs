@@ -7,6 +7,8 @@ namespace System.Data.ORM.Queries
     {
         IList<T> OrderBy<E>(Expression<Func<T, E>> expression);
 
+        IList<T> OrderBy<E>(Expression<Func<T, E>> expression, Order orderType);
+
         IList<T> ToList();
     }
 }
