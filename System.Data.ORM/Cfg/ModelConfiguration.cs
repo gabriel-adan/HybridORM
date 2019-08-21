@@ -1,25 +1,30 @@
 ﻿using System.Reflection;
 using System.Data.ORM.CoreMap;
 using System.Data.ORM.Mapping;
-using System.Linq;
 
 namespace System.Data.ORM.Cfg
 {
     public class ModelConfiguration
     {
-        private Assembly AssemblyModel;
-
         public ModelConfiguration(string assemblyName, string folderName)
         {
             try
             {
-                AssemblyModel = Assembly.Load(assemblyName);
-                foreach (Type type in AssemblyModel.ExportedTypes)
+                var assemblyModel = Assembly.Load(assemblyName);
+                foreach (Type type in assemblyModel.ExportedTypes)
                 {
                     if (type.Namespace.Equals(assemblyName + "." + folderName))
                     {
-                        IEntityMap entityMap = Activator.CreateInstance(typeof(EntityMap<>).MakeGenericType(type)) as IEntityMap;
-                        Configuration.Mappings.Add(type.Name, entityMap);
+                        if (!type.IsEnum)
+                        {
+                            IEntityMap entityMap = Activator.CreateInstance(typeof(EntityMap<>).MakeGenericType(type)) as IEntityMap;
+                            Configuration.Mappings.Add(type.Name, entityMap);
+                        }
+                        else
+                        {
+                            IEnumMap enumMap = Activator.CreateInstance(typeof(EnumMap), type) as IEnumMap;
+                            Configuration.Mappings.Add(type.Name, enumMap);
+                        }
                     }
                 }
             }

@@ -45,11 +45,18 @@ namespace System.Data.ORM.Mapping
             string nameSpace = string.Empty;
             foreach (var property in Type.GetProperties())
             {
-                nameSpace = property.PropertyType.Namespace;
-                if (nameSpace.Equals("System") && !nameSpace.Equals("System.Collections.Generic"))
-                    ColumnNames.Add(property.Name, property.Name);
-                if (!nameSpace.Equals("System") && !nameSpace.Equals("System.Collections.Generic"))
+                if (!property.PropertyType.IsEnum)
+                {
+                    nameSpace = property.PropertyType.Namespace;
+                    if (nameSpace.Equals("System") && !nameSpace.Equals("System.Collections.Generic"))
+                        ColumnNames.Add(property.Name, property.Name);
+                    if (!nameSpace.Equals("System") && !nameSpace.Equals("System.Collections.Generic"))
+                        ForeignKeys.Add(property.Name, property.Name + "_Id");
+                }
+                else
+                {
                     ForeignKeys.Add(property.Name, property.Name + "_Id");
+                }
             }
         }
 

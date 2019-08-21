@@ -39,12 +39,15 @@ namespace System.Data.ORM.Context
                 }
                 foreach (var mapping in Cfg.Configuration.Mappings)
                 {
-                    var query = Activator.CreateInstance(typeof(Query<>).MakeGenericType(mapping.Value.Type), mapping.Value);
-                    var persist = Activator.CreateInstance(typeof(Persist<>).MakeGenericType(mapping.Value.Type), mapping.Value);
-                    var modify = Activator.CreateInstance(typeof(Modify<>).MakeGenericType(mapping.Value.Type), mapping.Value);
-                    var delete = Activator.CreateInstance(typeof(Delete<>).MakeGenericType(mapping.Value.Type), mapping.Value);
-                    var set = Activator.CreateInstance(typeof(Set<>).MakeGenericType(mapping.Value.Type), connection, configuration, assembly, query, persist, modify, delete);
-                    Cfg.Configuration.Sets.Add(set);
+                    if (!mapping.Value.Type.IsEnum)
+                    {
+                        var query = Activator.CreateInstance(typeof(Query<>).MakeGenericType(mapping.Value.Type), mapping.Value);
+                        var persist = Activator.CreateInstance(typeof(Persist<>).MakeGenericType(mapping.Value.Type), mapping.Value);
+                        var modify = Activator.CreateInstance(typeof(Modify<>).MakeGenericType(mapping.Value.Type), mapping.Value);
+                        var delete = Activator.CreateInstance(typeof(Delete<>).MakeGenericType(mapping.Value.Type), mapping.Value);
+                        var set = Activator.CreateInstance(typeof(Set<>).MakeGenericType(mapping.Value.Type), connection, configuration, assembly, query, persist, modify, delete);
+                        Cfg.Configuration.Sets.Add(set);
+                    }
                 }
                 foreach (var mapping in Cfg.Configuration.ViewMappings)
                 {
@@ -83,8 +86,9 @@ namespace System.Data.ORM.Context
             IList<PropertyInfo> properties = new List<PropertyInfo>();
             foreach (var property in type.GetProperties())
             {
-                if (!property.PropertyType.Namespace.Equals("System") && !property.PropertyType.Namespace.Equals("System.Collections.Generic"))
-                    properties.Add(property);
+                //if (!property.PropertyType.IsEnum)
+                    if (!property.PropertyType.Namespace.Equals("System") && !property.PropertyType.Namespace.Equals("System.Collections.Generic"))
+                        properties.Add(property);
             }
             return properties;
         }
