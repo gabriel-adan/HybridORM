@@ -184,6 +184,8 @@ namespace System.Data.ORM.Context
 
         IDbCommand CreateCommand(string query)
         {
+            if (configuration.IsShowSql)
+                Diagnostics.Debug.WriteLine("Query Executed ===> [" + query + "] ");
             IDbCommand command = assembly.CreateInstance(configuration.CommandTypeName(), true) as IDbCommand;
             command.Connection = connection as IDbConnection;
             command.CommandText = query;

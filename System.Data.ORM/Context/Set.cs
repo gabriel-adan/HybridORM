@@ -108,14 +108,31 @@ namespace System.Data.ORM.Context
                             }
                             foreach (var keyValuePair in Query.EntityMap.Entities)
                             {
-                                object obj = Activator.CreateInstance(keyValuePair.Value.Type);
-                                foreach (var keyValueColumn in keyValuePair.Value.ColumnNames)
+                                if (keyValuePair.Value.Type.IsEnum)
                                 {
-                                    var value = reader[keyValuePair.Key + "." + keyValueColumn.Key];
-                                    PropertyInfo property = keyValuePair.Value.Type.GetProperty(keyValueColumn.Key);
-                                    property.SetValue(obj, DataFormater.ParseToData(property, value));
+                                    var value = reader[keyValuePair.Key + "." + keyValuePair.Value.PrimaryKeyName];
+
+                                    if (Enum.IsDefined(keyValuePair.Value.Type, value))
+                                    {
+                                        Enum @enum = (Enum)Enum.Parse(keyValuePair.Value.Type, value + "");
+                                        Query.EntityMap.Type.GetProperty(keyValuePair.Key).SetValue(entity, @enum);
+                                    }
+                                    else
+                                    {
+                                        throw new Exception("El tipo enum [" + keyValuePair.Value.Type + "] no tiene definido el valor [" + value + "].");
+                                    }
                                 }
-                                Query.EntityMap.Type.GetProperty(keyValuePair.Key).SetValue(entity, obj);
+                                else
+                                {
+                                    object obj = Activator.CreateInstance(keyValuePair.Value.Type);
+                                    foreach (var keyValueColumn in keyValuePair.Value.ColumnNames)
+                                    {
+                                        var value = reader[keyValuePair.Key + "." + keyValueColumn.Key];
+                                        PropertyInfo property = keyValuePair.Value.Type.GetProperty(keyValueColumn.Key);
+                                        property.SetValue(obj, DataFormater.ParseToData(property, value));
+                                    }
+                                    Query.EntityMap.Type.GetProperty(keyValuePair.Key).SetValue(entity, obj);
+                                }
                             }
                         }
                         reader.Close();
@@ -474,7 +491,7 @@ namespace System.Data.ORM.Context
                                     }
                                     else
                                     {
-                                        throw new Exception("El tipo enum [" + keyValuePair.Value.Type + "] no tiene definido un valor para asociado para el valor [" + value + "].");
+                                        throw new Exception("El tipo enum [" + keyValuePair.Value.Type + "] no tiene definido el valor [" + value + "].");
                                     }
                                 }
                                 else
@@ -508,6 +525,8 @@ namespace System.Data.ORM.Context
 
         IDbCommand CreateCommand(string query)
         {
+            if (configuration.IsShowSql)
+                Diagnostics.Debug.WriteLine("Query Executed ===> [" + query + "] ");
             IDbCommand command = assembly.CreateInstance(configuration.CommandTypeName(), true) as IDbCommand;
             command.Connection = connection as IDbConnection;
             command.CommandText = query;

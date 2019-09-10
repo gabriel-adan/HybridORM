@@ -17,13 +17,24 @@ namespace System.Data.ORM.CoreMap
                 {
                     query += keyValueColumn.Value + " = {" + keyValueColumn.Key + "}, ";
                 }
+                else
+                {
+                    if (!entityMap.IsAutoincrement)
+                    {
+                        query += keyValueColumn.Value + " = {" + keyValueColumn.Key + "}, ";
+                    }
+                }
             }
             query += "-";
             query = query.Replace(", -", " ");
             query += "WHERE ";
-            if (string.IsNullOrEmpty(entityMap.PrimaryKeyName) && entityMap.ForeignKeys.Count > 0)
+            if (string.IsNullOrEmpty(entityMap.PrimaryKeyName))
             {
                 foreach (var keyValue in entityMap.ForeignKeys)
+                {
+                    query += keyValue.Value + " = {" + keyValue.Key + "} AND ";
+                }
+                foreach (var keyValue in entityMap.Keys)
                 {
                     query += keyValue.Value + " = {" + keyValue.Key + "} AND ";
                 }
@@ -32,7 +43,22 @@ namespace System.Data.ORM.CoreMap
             }
             else
             {
-                query += entityMap.PrimaryKeyName + " = {Id};";
+                if (entityMap.IsAutoincrement)
+                {
+                    query += entityMap.PrimaryKeyName + " = {Id};";
+                }
+                else
+                {
+                    foreach (var keyValue in entityMap.ForeignKeys)
+                    {
+                        query += keyValue.Value + " = {" + keyValue.Key + "} AND ";
+                    }
+                    foreach (var keyValue in entityMap.Keys)
+                    {
+                        query += keyValue.Value + " = {" + keyValue.Key + "} AND ";
+                    }
+                    query += entityMap.PrimaryKeyName + " = {Id};";
+                }
             }
         }
 

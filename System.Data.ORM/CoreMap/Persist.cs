@@ -87,8 +87,23 @@ namespace System.Data.ORM.CoreMap
                                         }
                                         else
                                         {
-                                            var value = foreignEntity.Type.GetProperty(foreignEntity.PrimaryKeyName).GetValue(o);
-                                            query = query.Replace("{" + keyValue.Key + "." + keyValueEntity.Key + "}", DataFormater.ParseToSQL(value));
+                                            if (foreignEntity.Type.IsEnum)
+                                            {
+                                                if (Enum.IsDefined(foreignEntity.Type, o))
+                                                {
+                                                    Enum @enum = (Enum)Enum.Parse(foreignEntity.Type, o + "");
+                                                    query = query.Replace("{" + keyValue.Key + "." + keyValueEntity.Key + "}", DataFormater.ParseToSQL(@enum));
+                                                }
+                                                else
+                                                {
+                                                    throw new Exception("El tipo enum [" + foreignEntity.Type + "] no tiene definido el valor [" + o + "].");
+                                                }
+                                            }
+                                            else
+                                            {
+                                                var value = foreignEntity.Type.GetProperty(foreignEntity.PrimaryKeyName).GetValue(o);
+                                                query = query.Replace("{" + keyValue.Key + "." + keyValueEntity.Key + "}", DataFormater.ParseToSQL(value));
+                                            }
                                         }
                                     }
                                 }
@@ -119,9 +134,24 @@ namespace System.Data.ORM.CoreMap
                                 foreach (var keyValue in entityMap.Entities)
                                 {
                                     IEntityMap foreignKeyEntity = keyValue.Value;
-                                    object o = entityMap.Type.GetProperty(keyValue.Key).GetValue(obj);
-                                    var value = foreignKeyEntity.Type.GetProperty(foreignKeyEntity.PrimaryKeyName).GetValue(o);
-                                    query = query.Replace("{" + keyValuePair.Key + "." + keyValue.Key + "}", DataFormater.ParseToSQL(value));
+                                    if (foreignKeyEntity.Type.IsEnum)
+                                    {
+                                        if (Enum.IsDefined(foreignKeyEntity.Type, obj))
+                                        {
+                                            Enum @enum = (Enum)Enum.Parse(foreignKeyEntity.Type, obj + "");
+                                            query = query.Replace("{" + keyValuePair.Key + "." + keyValue.Key + "}", DataFormater.ParseToSQL(@enum));
+                                        }
+                                        else
+                                        {
+                                            throw new Exception("El tipo enum [" + foreignKeyEntity.Type + "] no tiene definido el valor [" + obj + "].");
+                                        }
+                                    }
+                                    else
+                                    {
+                                        object o = entityMap.Type.GetProperty(keyValue.Key).GetValue(obj);
+                                        var value = foreignKeyEntity.Type.GetProperty(foreignKeyEntity.PrimaryKeyName).GetValue(o);
+                                        query = query.Replace("{" + keyValuePair.Key + "." + keyValue.Key + "}", DataFormater.ParseToSQL(value));
+                                    }
                                 }
                                 foreach (var keyValue in entityMap.Keys)
                                 {
@@ -135,8 +165,23 @@ namespace System.Data.ORM.CoreMap
                             object obj = EntityMap.Type.GetProperty(keyValuePair.Key).GetValue(entity);
                             if (obj != null)
                             {
-                                var value = entityMap.Type.GetProperty(entityMap.PrimaryKeyName).GetValue(obj);
-                                query = query.Replace("{" + keyValuePair.Key + "}", DataFormater.ParseToSQL(value));
+                                if (entityMap.Type.IsEnum)
+                                {
+                                    if (Enum.IsDefined(entityMap.Type, obj))
+                                    {
+                                        Enum @enum = (Enum)Enum.Parse(entityMap.Type, obj + "");
+                                        query = query.Replace("{" + keyValuePair.Key + "}", DataFormater.ParseToSQL(@enum));
+                                    }
+                                    else
+                                    {
+                                        throw new Exception("El tipo enum [" + keyValuePair.Value.Type + "] no tiene definido el valor [" + obj + "].");
+                                    }
+                                }
+                                else
+                                {
+                                    var value = entityMap.Type.GetProperty(entityMap.PrimaryKeyName).GetValue(obj);
+                                    query = query.Replace("{" + keyValuePair.Key + "}", DataFormater.ParseToSQL(value));
+                                }
                             }
                         }
                     }

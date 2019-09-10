@@ -8,7 +8,6 @@ namespace System.Data.ORM.CoreMap
     {
         IViewMap ViewMap;
         StringBuilder _queryBuilder;
-        int fieldCount = 0;
 
         public ViewQueryTranslator(IViewMap viewMap)
         {
@@ -17,7 +16,6 @@ namespace System.Data.ORM.CoreMap
 
         public string Where(Expression expression)
         {
-            fieldCount = 0;
             _queryBuilder = new StringBuilder();
             this.Visit(expression);
             return _queryBuilder.ToString();
@@ -25,7 +23,6 @@ namespace System.Data.ORM.CoreMap
 
         public string GroupBy(Expression expression)
         {
-            fieldCount = 0;
             _queryBuilder = new StringBuilder();
             this.Visit(expression);
             return _queryBuilder.ToString();
@@ -33,7 +30,6 @@ namespace System.Data.ORM.CoreMap
 
         public string OrderBy(Expression expression)
         {
-            fieldCount = 0;
             _queryBuilder = new StringBuilder();
             this.Visit(expression);
             return _queryBuilder.ToString();
@@ -125,18 +121,39 @@ namespace System.Data.ORM.CoreMap
                 var c = obj.GetType().GetFields().Length;
                 if (c > 1)
                 {
-                    FieldInfo field = obj.GetType().GetFields()[fieldCount];
-                    object value = field.GetValue(obj);
-                    if (value != null)
+                    var fields = obj.GetType().GetFields();
+                    FieldInfo field = null;
+                    foreach (var f in fields)
                     {
-                        if (value.GetType() == typeof(DateTime))
+                        if (f.Name.Equals(node.Member.Name))
                         {
-                            DateTime date = (DateTime)value;
-                            _queryBuilder.Append(DataFormater.ParseToSQL(date.ToString("yyyy-MM-dd")));
+                            field = f;
+                            break;
                         }
                     }
-                    _queryBuilder.Append(DataFormater.ParseToSQL(value));
-                    fieldCount++;
+                    if (field != null)
+                    {
+                        object value = field.GetValue(obj);
+                        if (value != null)
+                        {
+                            if (value.GetType() == typeof(DateTime))
+                            {
+                                DateTime date = (DateTime)value;
+                                value = DataFormater.ParseToSQL(date.ToString("yyyy-MM-dd"));
+                                _queryBuilder.Append(value);
+                            }
+                            else
+                            {
+                                value = DataFormater.ParseToSQL(value);
+                                _queryBuilder.Append(value);
+                            }
+                        }
+                        else
+                        {
+                            value = DataFormater.ParseToSQL(value);
+                            _queryBuilder.Append(value);
+                        }
+                    }
                 }
                 else
                 {

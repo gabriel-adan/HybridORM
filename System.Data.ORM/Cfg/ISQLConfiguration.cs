@@ -2,6 +2,8 @@
 {
     public interface ISQLConfiguration
     {
+        bool IsShowSql { get; }
+
         string ConnectionString { get; }
 
         string AssemblyTypeName();
@@ -13,5 +15,7 @@
         string LastInsertId();
 
         string SQLNot();
+
+        ISQLConfiguration ShowSql();
     }
 }

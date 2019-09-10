@@ -49,45 +49,52 @@ namespace System.Data.ORM.CoreMap
                     bool isLeftJoin = list.Count > 1;
 
                     string foreignKeyName;
-                    if (string.IsNullOrEmpty(foreignEntity.PrimaryKeyName) && foreignEntity.Entities.Count > 0)
+                    if (string.IsNullOrEmpty(foreignEntity.PrimaryKeyName))
                     {
-                        string join = "INNER JOIN " + foreignEntity.TableName + " " + keyValuePair.Key + " ON ";
-
-                        foreach (var keyValue in foreignEntity.Entities)
+                        if (foreignEntity.Entities.Count > 0)
                         {
-                            IEntityMap entity = keyValue.Value;
-                            foreach (var keyValueColumn in entity.ColumnNames)
-                                foreignColumnNames += keyValue.Key + "." + keyValueColumn.Value + " AS '" + keyValue.Key + "." + keyValueColumn.Key + "', ";
-                            EntityMap.ForeignKeys.TryGetValue(keyValuePair.Key + "." + keyValue.Key, out foreignKeyName);
-                            string fk;
-                            if (string.IsNullOrEmpty(EntityMap.PrimaryKeyName))
-                            {
-                                foreignEntity.ForeignKeys.TryGetValue(keyValue.Key, out fk);
-                                joins += "INNER JOIN " + entity.TableName + " " + keyValue.Key + " ON " + keyValuePair.Key + "." + fk + " = _this." + foreignKeyName + " ";
-                                join += "_this." + foreignKeyName + " = " + keyValuePair.Key + "." + fk + " AND ";
+                            string join = "INNER JOIN " + foreignEntity.TableName + " " + keyValuePair.Key + " ON ";
 
-                                foreach (var keyValueFk in EntityMap.Keys)
-                                {
-                                    join += "_this." + keyValueFk.Value + " = " + keyValuePair.Key + "." + keyValueFk.Key + " AND ";
-                                }
-                            }
-                            else
+                            foreach (var keyValue in foreignEntity.Entities)
                             {
-                                foreignEntity.ForeignKeys.TryGetValue(keyValue.Key, out fk);
-                                joins += "INNER JOIN " + entity.TableName + " " + keyValue.Key + " ON " + keyValuePair.Key + "." + fk + " = " + keyValue.Key + "." + entity.PrimaryKeyName + " ";
-                                if (string.IsNullOrEmpty(foreignEntity.PrimaryKeyName))
+                                IEntityMap entity = keyValue.Value;
+                                foreach (var keyValueColumn in entity.ColumnNames)
+                                    foreignColumnNames += keyValue.Key + "." + keyValueColumn.Value + " AS '" + keyValue.Key + "." + keyValueColumn.Key + "', ";
+                                EntityMap.ForeignKeys.TryGetValue(keyValuePair.Key + "." + keyValue.Key, out foreignKeyName);
+                                string fk;
+                                if (string.IsNullOrEmpty(EntityMap.PrimaryKeyName))
                                 {
-                                    join += "_this." + foreignKeyName + " = " + foreignEntity.TableName + "." + fk + " AND ";
+                                    foreignEntity.ForeignKeys.TryGetValue(keyValue.Key, out fk);
+                                    joins += "INNER JOIN " + entity.TableName + " " + keyValue.Key + " ON " + keyValuePair.Key + "." + fk + " = _this." + foreignKeyName + " ";
+                                    join += "_this." + foreignKeyName + " = " + keyValuePair.Key + "." + fk + " AND ";
+
+                                    foreach (var keyValueFk in EntityMap.Keys)
+                                    {
+                                        join += "_this." + keyValueFk.Value + " = " + keyValuePair.Key + "." + keyValueFk.Key + " AND ";
+                                    }
                                 }
                                 else
                                 {
-                                    join += "_this." + foreignKeyName + " = " + keyValue.Key + "." + entity.PrimaryKeyName + " AND ";
+                                    foreignEntity.ForeignKeys.TryGetValue(keyValue.Key, out fk);
+                                    joins += "INNER JOIN " + entity.TableName + " " + keyValue.Key + " ON " + keyValuePair.Key + "." + fk + " = " + keyValue.Key + "." + entity.PrimaryKeyName + " ";
+                                    if (string.IsNullOrEmpty(foreignEntity.PrimaryKeyName))
+                                    {
+                                        join += "_this." + foreignKeyName + " = " + foreignEntity.TableName + "." + fk + " AND ";
+                                        foreach (var kv in EntityMap.Keys)
+                                        {
+                                            join += "_this." + kv.Value + " = " + foreignEntity.TableName + "." + kv.Key + " AND ";
+                                        }
+                                    }
+                                    else
+                                    {
+                                        join += "_this." + foreignKeyName + " = " + keyValue.Key + "." + entity.PrimaryKeyName + " AND ";
+                                    }
                                 }
                             }
+                            join += "-";
+                            join = join.Replace("AND -", "");
+                            joins = join + joins;
                         }
-                        join += "-";
-                        join = join.Replace("AND -", "");
-                        joins = join + joins;
                     }
                     else
                     {

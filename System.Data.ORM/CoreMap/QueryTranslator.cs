@@ -1,6 +1,7 @@
 ﻿using System.Text;
 using System.Reflection;
 using System.Linq.Expressions;
+using System.Linq;
 
 namespace System.Data.ORM.CoreMap
 {
@@ -8,7 +9,7 @@ namespace System.Data.ORM.CoreMap
     {
         IEntityMap Entity;
         StringBuilder _queryBuilder;
-        int fieldCount = 0;
+        bool ignoreAssignment = false;
 
         public QueryTranslator(IEntityMap entity)
         {
@@ -17,7 +18,6 @@ namespace System.Data.ORM.CoreMap
 
         public string Where(Expression expression)
         {
-            fieldCount = 0;
             _queryBuilder = new StringBuilder();
             this.Visit(expression);
             return _queryBuilder.ToString();
@@ -25,7 +25,6 @@ namespace System.Data.ORM.CoreMap
 
         public string GroupBy(Expression expression)
         {
-            fieldCount = 0;
             _queryBuilder = new StringBuilder();
             this.Visit(expression);
             return _queryBuilder.ToString();
@@ -33,7 +32,6 @@ namespace System.Data.ORM.CoreMap
 
         public string OrderBy(Expression expression)
         {
-            fieldCount = 0;
             _queryBuilder = new StringBuilder();
             this.Visit(expression);
             return _queryBuilder.ToString();
@@ -47,6 +45,9 @@ namespace System.Data.ORM.CoreMap
                     _queryBuilder.Append(Cfg.Configuration.configuration.SQLNot() + " ");
                     this.Visit(node.Operand);
                     break;
+                case ExpressionType.Convert:
+                    this.Visit(node.Operand);
+                    break;
                 default:
                     throw new NotSupportedException(string.Format("El operador unario '{0}' no es soportado", node.NodeType));
             }
@@ -57,40 +58,43 @@ namespace System.Data.ORM.CoreMap
         protected override Expression VisitBinary(BinaryExpression node)
         {
             this.Visit(node.Left);
-            switch (node.NodeType)
+            if (!ignoreAssignment)
             {
-                case ExpressionType.And:
-                    _queryBuilder.Append(" AND ");
-                    break;
-                case ExpressionType.AndAlso:
-                    _queryBuilder.Append(" AND ");
-                    break;
-                case ExpressionType.Or:
-                    _queryBuilder.Append(" OR ");
-                    break;
-                case ExpressionType.OrElse:
-                    _queryBuilder.Append(" OR ");
-                    break;
-                case ExpressionType.Equal:
-                    _queryBuilder.Append(" = ");
-                    break;
-                case ExpressionType.NotEqual:
-                    _queryBuilder.Append(" <> ");
-                    break;
-                case ExpressionType.LessThan:
-                    _queryBuilder.Append(" < ");
-                    break;
-                case ExpressionType.LessThanOrEqual:
-                    _queryBuilder.Append(" <= ");
-                    break;
-                case ExpressionType.GreaterThan:
-                    _queryBuilder.Append(" > ");
-                    break;
-                case ExpressionType.GreaterThanOrEqual:
-                    _queryBuilder.Append(" >= ");
-                    break;
-                default:
-                    throw new NotSupportedException(string.Format("El operador binario '{0}' no es soportado", node.NodeType));
+                switch (node.NodeType)
+                {
+                    case ExpressionType.And:
+                        _queryBuilder.Append(" AND ");
+                        break;
+                    case ExpressionType.AndAlso:
+                        _queryBuilder.Append(" AND ");
+                        break;
+                    case ExpressionType.Or:
+                        _queryBuilder.Append(" OR ");
+                        break;
+                    case ExpressionType.OrElse:
+                        _queryBuilder.Append(" OR ");
+                        break;
+                    case ExpressionType.Equal:
+                        _queryBuilder.Append(" = ");
+                        break;
+                    case ExpressionType.NotEqual:
+                        _queryBuilder.Append(" <> ");
+                        break;
+                    case ExpressionType.LessThan:
+                        _queryBuilder.Append(" < ");
+                        break;
+                    case ExpressionType.LessThanOrEqual:
+                        _queryBuilder.Append(" <= ");
+                        break;
+                    case ExpressionType.GreaterThan:
+                        _queryBuilder.Append(" > ");
+                        break;
+                    case ExpressionType.GreaterThanOrEqual:
+                        _queryBuilder.Append(" >= ");
+                        break;
+                    default:
+                        throw new NotSupportedException(string.Format("El operador binario '{0}' no es soportado", node.NodeType));
+                }
             }
 
             this.Visit(node.Right);
@@ -107,7 +111,39 @@ namespace System.Data.ORM.CoreMap
                 if (!property.PropertyType.Namespace.Equals("System") && !property.PropertyType.Namespace.Equals("System.Collections.Generic"))
                 {
                     Entity.ForeignKeys.TryGetValue(node.Member.Name, out columnName);
-                    _queryBuilder.Append("_this." + columnName);
+                    if (!string.IsNullOrEmpty(columnName))
+                    {
+                        _queryBuilder.Append("_this." + columnName);
+                    }
+                    else
+                    {
+                        IEntityMap entityMap;
+                        Entity.Entities.TryGetValue(node.Member.Name, out entityMap);
+                        
+                        if (string.IsNullOrEmpty(entityMap.PrimaryKeyName))
+                        {
+                            string conditions = string.Empty;
+                            foreach (var keyValue in Entity.ForeignKeys)
+                            {
+                                string query = _queryBuilder.ToString();
+                                if (keyValue.Key.StartsWith(node.Member.Name) && !query.Contains("_this." + keyValue.Value))
+                                {
+                                    conditions += "_this." + keyValue.Value + " = {" + keyValue.Key + "} AND ";
+                                }
+                            }
+                            if (!string.IsNullOrEmpty(conditions))
+                            {
+                                conditions += "-";
+                                conditions = conditions.Replace(" AND -", "");
+                                _queryBuilder.Append(conditions);
+                            }
+                            ignoreAssignment = !string.IsNullOrEmpty(conditions);
+                        }
+                        else
+                        {
+
+                        }
+                    }
                 }
                 else
                 {
@@ -119,6 +155,32 @@ namespace System.Data.ORM.CoreMap
             if (node.Expression != null && node.Expression.NodeType == ExpressionType.MemberAccess)
             {
                 this.Visit(node.Expression);
+                MemberExpression expression = node.Expression as MemberExpression;
+                string fk;
+                Entity.ForeignKeys.TryGetValue(expression.Member.Name + "." + node.Member.Name, out fk);
+                if (!string.IsNullOrEmpty(fk))
+                {
+                    _queryBuilder.Append("_this." + fk);
+                }
+                else
+                {
+                    //var property = Entity.Type.GetProperty(expression.Member.Name);
+                    //if (property != null)
+                    //{
+                    //    if (!property.PropertyType.Namespace.Equals("System") && !property.PropertyType.Namespace.Equals("System.Collections.Generic"))
+                    //    {
+                    //        IEntityMap entityMap = Cfg.Configuration.Mappings.Where(e => e.Value.Type == property.PropertyType).FirstOrDefault().Value;
+                    //        if (string.IsNullOrEmpty(entityMap.PrimaryKeyName))
+                    //        {
+
+                    //        }
+                    //        else
+                    //        {
+
+                    //        }
+                    //    }
+                    //}
+                }
             }
             if (node.Expression != null && node.Expression.NodeType == ExpressionType.Constant)
             {
@@ -127,18 +189,92 @@ namespace System.Data.ORM.CoreMap
                 var c = obj.GetType().GetFields().Length;
                 if (c > 1)
                 {
-                    FieldInfo field = obj.GetType().GetFields()[fieldCount];
-                    object value = field.GetValue(obj);
-                    if (value != null)
+                    var fields = obj.GetType().GetFields();
+                    FieldInfo field = null;
+                    foreach(var f in fields)
                     {
-                        if (value.GetType() == typeof(DateTime))
+                        if (f.Name.Equals(node.Member.Name))
                         {
-                            DateTime date = (DateTime)value;
-                            _queryBuilder.Append(DataFormater.ParseToSQL(date.ToString("yyyy-MM-dd")));
+                            field = f;
+                            break;
                         }
                     }
-                    _queryBuilder.Append(DataFormater.ParseToSQL(value));
-                    fieldCount++;
+                    if (field != null)
+                    {
+                        object value = field.GetValue(obj);
+                        if (value != null)
+                        {
+                            if (value.GetType() == typeof(DateTime))
+                            {
+                                DateTime date = (DateTime)value;
+                                value = DataFormater.ParseToSQL(date.ToString("yyyy-MM-dd"));
+                                _queryBuilder.Append(value);
+                            }
+                            else
+                            {
+                                Type type = value.GetType();
+                                if (!type.Namespace.Equals("System") && !type.Namespace.Equals("System.Collections.Generic"))
+                                {
+                                    IEntityMap entityMap = Cfg.Configuration.Mappings.Where(e => e.Value.Type == type).FirstOrDefault().Value;
+                                    if (!string.IsNullOrEmpty(entityMap.PrimaryKeyName))
+                                    {
+                                        object id = entityMap.Type.GetProperty(entityMap.PrimaryKeyName).GetValue(value);
+                                        value = DataFormater.ParseToSQL(id);
+                                        _queryBuilder.Append(value);
+                                    }
+                                    else
+                                    {
+                                        foreach (var keyValue in Entity.ForeignKeys)
+                                        {
+                                            string query = _queryBuilder.ToString();
+                                            string str = keyValue.Key;
+                                            if (query.Contains("{" + str + "}"))
+                                            {
+                                                if (str.Contains("."))
+                                                {
+                                                    var props = str.Split(".");
+                                                    string entityName = props[0];
+                                                    string propertyName = props[1];
+                                                    var property = type.GetProperty(propertyName);
+                                                    if (!property.PropertyType.Namespace.Equals("System") && !property.PropertyType.Namespace.Equals("System.Collections.Generic"))
+                                                    {
+                                                        var _entity = property.GetValue(value);
+                                                        entityMap = Cfg.Configuration.Mappings.Where(e => e.Value.Type == property.PropertyType).FirstOrDefault().Value;
+                                                        if (string.IsNullOrEmpty(entityMap.PrimaryKeyName))
+                                                        {
+
+                                                        }
+                                                        else
+                                                        {
+                                                            object id = property.PropertyType.GetProperty(entityMap.PrimaryKeyName).GetValue(_entity);
+                                                            _queryBuilder.Replace("{" + entityName + "." + propertyName + "}", DataFormater.ParseToSQL(id));
+                                                        }
+                                                    }
+                                                    else
+                                                    {
+                                                        property = type.GetProperty(propertyName);
+                                                        object propertyValue = property.GetValue(value);
+                                                        _queryBuilder.Replace("{" + entityName + "." + propertyName + "}", DataFormater.ParseToSQL(propertyValue));
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        ignoreAssignment = false;
+                                    }
+                                }
+                                else
+                                {
+                                    value = DataFormater.ParseToSQL(value);
+                                    _queryBuilder.Append(value);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            value = DataFormater.ParseToSQL(value);
+                            _queryBuilder.Append(value);
+                        }
+                    }
                 }
                 else
                 {

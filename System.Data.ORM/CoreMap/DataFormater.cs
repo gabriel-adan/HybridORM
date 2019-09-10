@@ -16,6 +16,8 @@ namespace System.Data.ORM.CoreMap
                     return "'" + ((TimeSpan)value).ToString("HH:mm:ss") + "'";
                 if (type == typeof(DateTime))
                     return "'" + ((DateTime)value).ToString("yyyy-MM-dd HH:mm:ss") + "'";
+                if (type.IsEnum)
+                    return ((int)value).ToString();
                 return value.ToString();
             }
             return "NULL";

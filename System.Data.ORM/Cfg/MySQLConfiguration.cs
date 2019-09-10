@@ -2,6 +2,7 @@
 {
     public class MySQLConfiguration : ISQLConfiguration
     {
+        public bool IsShowSql { get; private set; }
         public string ConnectionString { get; }
 
         public MySQLConfiguration(string connectionString)
@@ -32,6 +33,12 @@
         public string SQLNot()
         {
             return "NOT";
+        }
+
+        public ISQLConfiguration ShowSql()
+        {
+            IsShowSql = true;
+            return this;
         }
     }
 }

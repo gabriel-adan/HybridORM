@@ -2,6 +2,7 @@
 {
     public class SQLiteConfiguration : ISQLConfiguration
     {
+        public bool IsShowSql { get; private set; }
         public string ConnectionString { get; }
 
         public SQLiteConfiguration(string connectionString)
@@ -32,6 +33,12 @@
         public string SQLNot()
         {
             return "IS NOT";
+        }
+
+        public ISQLConfiguration ShowSql()
+        {
+            IsShowSql = true;
+            return this;
         }
     }
 }
