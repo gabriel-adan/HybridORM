@@ -6,6 +6,7 @@ using System.Data.ORM.CoreMap;
 using System.Data.ORM.Queries;
 using System.Data.ORM.Contracts;
 using System.Data.ORM.Cfg;
+using System.Data.ORM.Security;
 
 namespace System.Data.ORM.Context
 {
@@ -525,6 +526,7 @@ namespace System.Data.ORM.Context
 
         IDbCommand CreateCommand(string query)
         {
+            query =  QuerySecurityAnalizer.AnalizeQuery(query);
             if (configuration.IsShowSql)
                 Diagnostics.Debug.WriteLine("Query Executed ===> [" + query + "] ");
             IDbCommand command = assembly.CreateInstance(configuration.CommandTypeName(), true) as IDbCommand;
