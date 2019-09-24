@@ -95,6 +95,22 @@ namespace System.Data.ORM.Context
             }
         }
 
+        ICriteria<V> ICriteria<V>.OrderBy<E>(Expression<Func<V, E>> expression, Order orderType)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(currentQuery))
+                    currentQuery = viewQuery.ViewMap.Query + viewQuery.OrderBy(expression) + " " + orderType;
+                else
+                    currentQuery += viewQuery.OrderBy(expression) + " " + orderType;
+                return this;
+            }
+            catch
+            {
+                throw;
+            }
+        }
+
         public IList<V> ToList()
         {
             try

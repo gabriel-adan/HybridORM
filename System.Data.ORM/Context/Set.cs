@@ -230,6 +230,24 @@ namespace System.Data.ORM.Context
             }
         }
 
+        ICriteria<T> ICriteria<T>.OrderBy<E>(Expression<Func<T, E>> expression, Order orderType)
+        {
+            try
+            {
+                Type type = Query.EntityMap.Type;
+                CurrentType = type;
+                string orderBy = Query.OrderBy(expression);
+                if (string.IsNullOrEmpty(currentQuery))
+                    currentQuery = Query.EntityMap.Select;
+                currentQuery += orderBy + " " + orderType;
+                return this;
+            }
+            catch
+            {
+                throw;
+            }
+        }
+
         public IList<T> ToList()
         {
             try
