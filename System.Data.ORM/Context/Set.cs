@@ -15,14 +15,14 @@ namespace System.Data.ORM.Context
         IDbConnection connection;
         ISQLConfiguration configuration;
         Assembly assembly;
-        IQuery<T> Query;
+        Contracts.IQuery<T> Query;
         IPersist<T> Persist;
         IModify<T> Modify;
         IDelete<T> Delete;
         Type CurrentType;
         string currentQuery;
 
-        public Set(IDbConnection connection, ISQLConfiguration configuration, Assembly assembly, IQuery<T> query, IPersist<T> persist, IModify<T> modify, IDelete<T> delete)
+        public Set(IDbConnection connection, ISQLConfiguration configuration, Assembly assembly, Contracts.IQuery<T> query, IPersist<T> persist, IModify<T> modify, IDelete<T> delete)
         {
             this.connection = connection;
             this.configuration = configuration;

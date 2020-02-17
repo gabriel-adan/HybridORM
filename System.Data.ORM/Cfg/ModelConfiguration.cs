@@ -71,5 +71,24 @@ namespace System.Data.ORM.Cfg
                 throw;
             }
         }
+
+        public ModelConfiguration Query<Q>()
+        {
+            try
+            {
+                Type type = typeof(Q);
+                if (type.BaseType.Name != typeof(QueryMap<>).Name)
+                    throw new Exception("El tipo [" + type + "] debe ser una clase heredada del tipo [" + typeof(QueryMap<>) + "]");
+                string entityKey = type.BaseType.GetGenericArguments()[0].Name;
+                Configuration.Mappings.Remove(entityKey);
+                IQueryMap queryMap = Activator.CreateInstance(type) as IQueryMap;
+                Configuration.QueryMappings.Add(entityKey, queryMap);
+                return this;
+            }
+            catch
+            {
+                throw;
+            }
+        }
     }
 }

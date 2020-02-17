@@ -9,6 +9,8 @@ namespace System.Data.ORM.Cfg
         internal static IList<object> Sets;
         internal static IDictionary<string, IViewMap> ViewMappings { get; }
         internal static IList<object> Views;
+        internal static IDictionary<string, IQueryMap> QueryMappings { get; }
+        internal static IList<object> Queries;
         internal static ISQLConfiguration configuration;
 
         static Configuration()
@@ -17,6 +19,8 @@ namespace System.Data.ORM.Cfg
             Sets = new List<object>();
             ViewMappings = new Dictionary<string, IViewMap>();
             Views = new List<object>();
+            QueryMappings = new Dictionary<string, IQueryMap>();
+            Queries = new List<object>();
         }
     }
 }

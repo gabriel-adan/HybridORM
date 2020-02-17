@@ -41,7 +41,7 @@ namespace System.Data.ORM.Context
                 {
                     if (!mapping.Value.Type.IsEnum)
                     {
-                        var query = Activator.CreateInstance(typeof(Query<>).MakeGenericType(mapping.Value.Type), mapping.Value);
+                        var query = Activator.CreateInstance(typeof(CoreMap.Query<>).MakeGenericType(mapping.Value.Type), mapping.Value);
                         var persist = Activator.CreateInstance(typeof(Persist<>).MakeGenericType(mapping.Value.Type), mapping.Value);
                         var modify = Activator.CreateInstance(typeof(Modify<>).MakeGenericType(mapping.Value.Type), mapping.Value);
                         var delete = Activator.CreateInstance(typeof(Delete<>).MakeGenericType(mapping.Value.Type), mapping.Value);
@@ -54,6 +54,12 @@ namespace System.Data.ORM.Context
                     var viewQuery = Activator.CreateInstance(typeof(ViewQuery<>).MakeGenericType(mapping.Value.Type), mapping.Value);
                     var view = Activator.CreateInstance(typeof(View<>).MakeGenericType(mapping.Value.Type), connection, configuration, assembly, viewQuery);
                     Cfg.Configuration.Views.Add(view);
+                }
+                foreach(var mapping in Cfg.Configuration.QueryMappings)
+                {
+                    var queryMap = Activator.CreateInstance(typeof(Mapping.QueryMap<>).MakeGenericType(mapping.Value.Type), mapping.Value.Query);
+                    var query = Activator.CreateInstance(typeof(Query<>).MakeGenericType(mapping.Value.Type), connection, configuration, assembly, queryMap);
+                    Cfg.Configuration.Queries.Add(query);
                 }
             }
             catch
@@ -77,8 +83,16 @@ namespace System.Data.ORM.Context
             IView<V> view = Cfg.Configuration.Views.Where(v => v.GetType().GetGenericArguments()[0] == type).FirstOrDefault() as IView<V>;
             if (view == null)
                 throw new Exception("Entity of type: [" + type + "] not mapped.");
-
             return view;
+        }
+
+        public IQuery<Q> Query<Q>() where Q : class
+        {
+            Type type = typeof(Q);
+            IQuery<Q> query = Cfg.Configuration.Queries.Where(q => q.GetType().GetGenericArguments()[0] == type).FirstOrDefault() as IQuery<Q>;
+            if (query == null)
+                throw new Exception("Entity of type: [" + type + "] not mapped.");
+            return query;
         }
 
         IList<PropertyInfo> GetEntities(Type type)
@@ -86,9 +100,8 @@ namespace System.Data.ORM.Context
             IList<PropertyInfo> properties = new List<PropertyInfo>();
             foreach (var property in type.GetProperties())
             {
-                //if (!property.PropertyType.IsEnum)
-                    if (!property.PropertyType.Namespace.Equals("System") && !property.PropertyType.Namespace.Equals("System.Collections.Generic"))
-                        properties.Add(property);
+                if (!property.PropertyType.Namespace.Equals("System") && !property.PropertyType.Namespace.Equals("System.Collections.Generic"))
+                    properties.Add(property);
             }
             return properties;
         }
